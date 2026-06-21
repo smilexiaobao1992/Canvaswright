@@ -4,7 +4,7 @@ Canvaswright 是一个面向 Codex 的本地 Excalidraw 画布工具，用来完
 
 它不是单纯的画板，而是给 Codex 提供一个可读写的项目级画布：你可以把一张或多张图片放到画布上，直接圈选、画箭头、写修改说明，然后让 Codex 根据标注生成干净的修改版。
 
-![Canvaswright 标注工作流](docs/images/canvas-workflow.jpg)
+![Canvaswright 标注工作流](docs/images/canvas-workflow.png)
 
 ## 能做什么
 
@@ -82,9 +82,9 @@ canvas/selection.json
 
 下面这个示例从一张电商海报开始，在画布上标注后，让 Codex 生成修改版。
 
-| 原始海报 | 按标注修改后的海报 |
+| 画布标注 | 按标注修改后的海报 |
 | --- | --- |
-| ![原始电商海报](docs/images/example-original.jpg) | ![修改后的电商海报](docs/images/example-revised.jpg) |
+| ![画布圈选标注示例](docs/images/example-annotated.png) | ![修改后的电商海报](docs/images/example-revised.jpg) |
 
 画布标注内容：
 
