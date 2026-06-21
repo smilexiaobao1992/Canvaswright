@@ -4,8 +4,6 @@ Canvaswright 是一个面向 Codex 的本地 Excalidraw 画布工具，用来完
 
 它不是单纯的画板，而是给 Codex 提供一个可读写的项目级画布：你可以把一张或多张图片放到画布上，直接圈选、画箭头、写修改说明，然后让 Codex 根据标注生成干净的修改版。
 
-致谢：[zhongerxin/cowart](https://github.com/zhongerxin/cowart) 为本项目提供了重要思路。
-
 ![Canvaswright 标注工作流](docs/images/canvas-workflow.jpg)
 
 ## 能做什么
@@ -216,8 +214,6 @@ Canvaswright is a local Excalidraw canvas for Codex-assisted image generation, a
 
 It gives Codex a project-local drawing surface: place one or more images on the canvas, mark exact areas with circles, arrows, and text notes, then ask Codex to generate clean revised images from those annotations.
 
-Acknowledgements: [zhongerxin/cowart](https://github.com/zhongerxin/cowart) provided important inspiration for this project.
-
 ### Quick Start
 
 ```bash
@@ -263,3 +259,9 @@ Plugin validation:
 ```bash
 python3 ~/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py .
 ```
+
+## 致谢 / Acknowledgements
+
+感谢开发者 [zhongerxin/cowart](https://github.com/zhongerxin/cowart) 为本项目提供思路。
+
+Thanks to [zhongerxin/cowart](https://github.com/zhongerxin/cowart) for the inspiration behind this project.
