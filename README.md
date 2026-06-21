@@ -15,6 +15,22 @@ Canvaswright 是一个面向 Codex 的本地 Excalidraw 画布工具，用来完
 - 让 Codex 把生成后的 PNG/JPG 回插到原图旁边。
 - 支持“标题更有艺术感”“这两个区域换个颜色”“按我的标注修改”等视觉迭代场景。
 
+## 给 Codex 的安装口令
+
+第一次安装时，可以把下面这段直接发给 Codex：
+
+```text
+请帮我安装 Canvaswright。仓库地址：https://github.com/smilexiaobao1992/Canvaswright
+
+请把它克隆到当前工作区下的 Canvaswright 目录，进入项目后运行 npm install，然后启动本地画布。启动成功后告诉我访问地址。
+```
+
+如果已经下载过，只需要说：
+
+```text
+请进入 Canvaswright 项目，安装依赖并启动本地画布，启动成功后告诉我访问地址。
+```
+
 ## 快速开始
 
 ```bash
