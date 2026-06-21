@@ -1,9 +1,10 @@
 import readline from 'node:readline'
-import { getCanvaswrightSelection, insertCanvaswrightImage } from './canvas-actions.mjs'
+import { getCanvaswrightEditTasks, getCanvaswrightSelection, insertCanvaswrightImage } from './canvas-actions.mjs'
 
 const SERVER_NAME = 'Canvaswright MCP'
 const SERVER_VERSION = '0.1.0'
 const TOOL_GET_SELECTION = 'get_canvaswright_selection'
+const TOOL_GET_EDIT_TASKS = 'get_canvaswright_edit_tasks'
 const TOOL_INSERT_IMAGE = 'insert_canvaswright_image'
 
 const JsonRpcError = {
@@ -51,6 +52,32 @@ function toolDefinitions() {
       }
     },
     {
+      name: TOOL_GET_EDIT_TASKS,
+      title: 'Get Canvaswright Edit Tasks',
+      description:
+        'Analyze the canvas and group annotation elements with the image elements they should modify. Selection takes priority; otherwise annotations are assigned by overlap and proximity.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          projectDir: {
+            type: 'string',
+            description: 'Absolute project directory containing canvas/. Defaults to the current working directory.'
+          },
+          canvasDir: {
+            type: 'string',
+            description: 'Absolute canvas directory. Overrides projectDir.'
+          }
+        },
+        additionalProperties: false
+      },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false
+      }
+    },
+    {
       name: TOOL_INSERT_IMAGE,
       title: 'Insert Canvaswright Image',
       description:
@@ -62,6 +89,10 @@ function toolDefinitions() {
           projectDir: { type: 'string', description: 'Absolute project directory containing canvas/.' },
           canvasDir: { type: 'string', description: 'Absolute canvas directory. Overrides projectDir.' },
           fileName: { type: 'string', description: 'Optional destination filename under page assets.' },
+          anchorElementId: {
+            type: 'string',
+            description: 'Optional image or holder element id to place beside or fill. Overrides the current browser selection.'
+          },
           placement: { type: 'string', enum: ['right', 'left', 'below'], description: 'Placement around a non-holder selection.' },
           margin: { type: 'number', description: 'Canvas units between anchor and image. Defaults to 40.' }
         },
@@ -90,6 +121,24 @@ async function handleToolCall(id, params) {
     sendResult(id, {
       content: [{ type: 'text', text: summary }],
       structuredContent: { selection }
+    })
+    return
+  }
+
+  if (params?.name === TOOL_GET_EDIT_TASKS) {
+    const result = await getCanvaswrightEditTasks(params.arguments ?? {})
+    const summary =
+      result.editTasks.length === 0
+        ? 'No Canvaswright image edit tasks were detected.'
+        : result.editTasks
+            .map((task) => {
+              const text = task.instructionText ? `: ${task.instructionText}` : ''
+              return `${task.targetElement.id} <= ${task.annotationElements.length} annotation(s)${text}`
+            })
+            .join('\n')
+    sendResult(id, {
+      content: [{ type: 'text', text: summary }],
+      structuredContent: result
     })
     return
   }
@@ -123,7 +172,7 @@ async function handleRequest(message) {
         version: SERVER_VERSION
       },
       instructions:
-        'Use get_canvaswright_selection to inspect selected Excalidraw elements and insert_canvaswright_image to place local generated images into the project-local Canvaswright canvas.'
+        'Use get_canvaswright_selection to inspect selected Excalidraw elements, get_canvaswright_edit_tasks to group annotations with target images, and insert_canvaswright_image to place local generated images into the project-local Canvaswright canvas.'
     })
     return
   }

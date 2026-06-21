@@ -1,5 +1,6 @@
 import { copyFile, mkdir, readFile, stat } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
+import { getCanvasEditTasks } from '../src/lib/edit-tasks.js'
 import { planImageInsertion } from '../src/lib/image-insertion.js'
 import { getSceneSelection, normalizeScenePayload, sanitizeIdPart } from '../src/lib/scene.js'
 import { loadScene, pageAssetUrl, readSelection, resolveCanvasPaths, saveScene } from '../src/server/storage.js'
@@ -9,6 +10,23 @@ export async function getCanvaswrightSelection(args = {}) {
   const browserSelection = await readSelection(args)
   const sceneSelection = getSceneSelection(scene)
   return browserSelection.selectedElements.length > 0 ? browserSelection : sceneSelection
+}
+
+export async function getCanvaswrightEditTasks(args = {}) {
+  const scene = await loadScene(args)
+  const browserSelection = await readSelection(args)
+  const selectedElementIds = Object.fromEntries(
+    (browserSelection.selectedElements ?? []).map((element) => [element.id, true])
+  )
+  return getCanvasEditTasks({
+    ...scene,
+    appState: {
+      ...scene.appState,
+      selectedElementIds: Object.keys(selectedElementIds).length > 0
+        ? selectedElementIds
+        : scene.appState.selectedElementIds
+    }
+  })
 }
 
 export async function insertCanvaswrightImage(args = {}) {
@@ -27,7 +45,7 @@ export async function insertCanvaswrightImage(args = {}) {
   const imageSize = await getImageDimensions(imagePath)
   const scene = await loadScene(args)
   const selection = await readSelection(args)
-  const sceneWithSelection = applySelectionToScene(scene, selection)
+  const sceneWithSelection = applySelectionToScene(scene, selection, args.anchorElementId)
   const result = planImageInsertion({
     scene: sceneWithSelection,
     assetUrl: pageAssetUrl({ pageId: paths.pageId, fileName }),
@@ -58,7 +76,16 @@ export async function insertCanvaswrightImage(args = {}) {
   }
 }
 
-function applySelectionToScene(scene, selection) {
+function applySelectionToScene(scene, selection, anchorElementId) {
+  if (anchorElementId) {
+    return normalizeScenePayload({
+      ...scene,
+      appState: {
+        ...scene.appState,
+        selectedElementIds: { [String(anchorElementId)]: true }
+      }
+    })
+  }
   if (!selection?.selectedElements?.length) return scene
   return normalizeScenePayload({
     ...scene,
