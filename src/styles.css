@@ -32,6 +32,23 @@ button:hover {
   background: #27344d;
 }
 
+button:disabled {
+  border-color: #d7dce7;
+  color: #98a2b3;
+  background: #eef1f6;
+  cursor: not-allowed;
+}
+
+.button-secondary {
+  border-color: #c9d2e3;
+  color: #27344d;
+  background: #ffffff;
+}
+
+.button-secondary:hover {
+  background: #f4f7fb;
+}
+
 .app-shell {
   display: grid;
   grid-template-rows: auto 1fr;
@@ -44,11 +61,15 @@ button:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  min-height: 64px;
-  padding: 10px 16px;
+  gap: 12px;
+  min-height: 60px;
+  padding: 8px 14px;
   border-bottom: 1px solid #dfe3ec;
-  background: #ffffff;
+  background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
+}
+
+.brand-block {
+  min-width: 168px;
 }
 
 .topbar h1 {
@@ -64,33 +85,158 @@ button:hover {
   font-size: 13px;
 }
 
-.topbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.holder-action {
+.codex-toolbar {
   display: grid;
-  gap: 3px;
-  justify-items: end;
+  grid-template-columns: auto auto minmax(140px, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
-.holder-action span {
-  max-width: 220px;
+.target-pill {
+  display: inline-grid;
+  grid-template-columns: auto auto auto minmax(80px, 1fr);
+  align-items: center;
+  gap: 6px;
+  min-width: 260px;
+  max-width: 390px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid #d9e1ee;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.target-pill.is-selected {
+  border-color: #9ec5ff;
+  background: #f6faff;
+}
+
+.target-pill.is-locked {
+  border-color: #5b8def;
+  background: #eef5ff;
+}
+
+.target-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #c4ccd9;
+}
+
+.target-pill.is-selected .target-dot {
+  background: #5b8def;
+}
+
+.target-pill.is-locked .target-dot {
+  background: linear-gradient(180deg, #1c7ed6, #12b886);
+}
+
+.target-state {
   color: #637083;
   font-size: 12px;
-  line-height: 1.3;
-  text-align: right;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.target-pill strong,
+.target-pill small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.target-pill strong {
+  color: #172033;
+  font-size: 13px;
+}
+
+.target-pill small {
+  color: #637083;
+  font-size: 12px;
+}
+
+.icon-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-color: #c9d2e3;
+  border-radius: 8px;
+  color: #27344d;
+  background: #ffffff;
+}
+
+.icon-button:hover {
+  color: #172033;
+  background: #f4f7fb;
+}
+
+.icon-button.is-active {
+  border-color: #5b8def;
+  color: #1c4ed8;
+  background: #eef5ff;
+}
+
+.icon-button svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.toolbar-hint {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  max-width: 260px;
+  overflow: hidden;
+  color: #637083;
+  font-size: 12px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toolbar-hint svg {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
 }
 
 .status {
-  max-width: 320px;
+  max-width: 190px;
   overflow: hidden;
   color: #637083;
-  font-size: 13px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .canvas-frame {
@@ -110,12 +256,26 @@ button:hover {
     flex-direction: column;
   }
 
-  .topbar-actions {
+  .brand-block,
+  .codex-toolbar,
+  .target-pill {
     width: 100%;
-    justify-content: space-between;
   }
 
-  .holder-action {
-    justify-items: end;
+  .codex-toolbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .target-pill {
+    min-width: 0;
+  }
+
+  .toolbar-hint {
+    grid-column: 1 / -1;
+    max-width: 100%;
+  }
+
+  .status {
+    max-width: 100%;
   }
 }

@@ -10,14 +10,23 @@ export async function getCanvaswrightSelection(args = {}) {
   const scene = await loadScene(args)
   const browserSelection = await readSelection(args)
   const sceneSelection = getSceneSelection(scene)
+  if (browserSelection.lockedTarget) {
+    return {
+      ...browserSelection,
+      selectedElements: [browserSelection.lockedTarget]
+    }
+  }
   return browserSelection.selectedElements.length > 0 ? browserSelection : sceneSelection
 }
 
 export async function getCanvaswrightEditTasks(args = {}) {
   const scene = await loadScene(args)
   const browserSelection = await readSelection(args)
+  const targetElements = browserSelection.lockedTarget
+    ? [browserSelection.lockedTarget]
+    : (browserSelection.selectedElements ?? [])
   const selectedElementIds = Object.fromEntries(
-    (browserSelection.selectedElements ?? []).map((element) => [element.id, true])
+    targetElements.map((element) => [element.id, true])
   )
   return getCanvasEditTasks({
     ...scene,
@@ -174,12 +183,13 @@ function applySelectionToScene(scene, selection, anchorElementId) {
       }
     })
   }
-  if (!selection?.selectedElements?.length) return scene
+  if (!selection?.lockedTarget && !selection?.selectedElements?.length) return scene
+  const targetElements = selection.lockedTarget ? [selection.lockedTarget] : selection.selectedElements
   return normalizeScenePayload({
     ...scene,
     appState: {
       ...scene.appState,
-      selectedElementIds: Object.fromEntries(selection.selectedElements.map((element) => [element.id, true]))
+      selectedElementIds: Object.fromEntries(targetElements.map((element) => [element.id, true]))
     }
   })
 }

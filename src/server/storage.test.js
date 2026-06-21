@@ -57,10 +57,27 @@ describe('canvas storage', () => {
   it('persists browser selection separately from the full scene', async () => {
     const projectDir = await mkdtemp(join(tmpdir(), 'canvaswright-'))
     try {
-      await saveSelection({ projectDir }, { selectedElements: [{ id: 'rect-1' }] })
+      await saveSelection(
+        { projectDir },
+        {
+          selectedElements: [{ id: 'rect-1' }],
+          lockedTarget: {
+            id: 'image-1',
+            type: 'image',
+            isAiImageHolder: false,
+            bounds: { x: 0, y: 0, width: 320, height: 200 }
+          }
+        }
+      )
 
       const selection = await readSelection({ projectDir })
       assert.deepEqual(selection.selectedElements, [{ id: 'rect-1' }])
+      assert.deepEqual(selection.lockedTarget, {
+        id: 'image-1',
+        type: 'image',
+        isAiImageHolder: false,
+        bounds: { x: 0, y: 0, width: 320, height: 200 }
+      })
     } finally {
       await rm(projectDir, { recursive: true, force: true })
     }

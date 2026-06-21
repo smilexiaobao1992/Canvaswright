@@ -9,21 +9,35 @@ const STATUS_AUTOSAVE_ON = 'Autosave on'
 export default function App() {
   const [scene, setScene] = useState(null)
   const [status, setStatus] = useState('Loading canvas...')
+  const [currentSelection, setCurrentSelection] = useState([])
+  const [lockedTarget, setLockedTarget] = useState(null)
   const apiRef = useRef(null)
   const saveTimerRef = useRef(null)
   const lastRemoteSceneAtRef = useRef(null)
   const lastRevisionRef = useRef(0)
+  const lockedTargetRef = useRef(null)
+
+  useEffect(() => {
+    lockedTargetRef.current = lockedTarget
+  }, [lockedTarget])
 
   useEffect(() => {
     let cancelled = false
-    fetch('/api/scene')
-      .then((response) => response.json())
-      .then((payload) => {
+    Promise.all([
+      fetch('/api/scene').then((response) => response.json()),
+      fetch('/api/selection').then((response) => response.json()).catch(() => ({ selection: null }))
+    ])
+      .then(([scenePayload, selectionPayload]) => {
         if (cancelled) return
-        const nextScene = normalizeScenePayload(payload.scene)
+        const nextScene = normalizeScenePayload(scenePayload.scene)
+        const nextSelection = getSceneSelection(nextScene)
+        const nextLockedTarget = resolveTargetFromScene(nextScene, selectionPayload.selection?.lockedTarget?.id)
         lastRemoteSceneAtRef.current = nextScene.updatedAt
         lastRevisionRef.current = nextScene.revision
+        lockedTargetRef.current = nextLockedTarget
         setScene(nextScene)
+        setCurrentSelection(nextSelection.selectedElements)
+        setLockedTarget(nextLockedTarget)
         setStatus(STATUS_AUTOSAVE_ON)
       })
       .catch((error) => {
@@ -43,13 +57,18 @@ export default function App() {
         .then((payload) => {
           const remoteScene = normalizeScenePayload(payload.scene)
           if (remoteScene.updatedAt === lastRemoteSceneAtRef.current) return
+          const remoteSelection = getSceneSelection(remoteScene)
+          const remoteLockedTarget = resolveTargetFromScene(remoteScene, lockedTargetRef.current?.id)
           lastRemoteSceneAtRef.current = remoteScene.updatedAt
           lastRevisionRef.current = remoteScene.revision
+          lockedTargetRef.current = remoteLockedTarget
           apiRef.current?.updateScene({
             elements: remoteScene.elements,
             appState: remoteScene.appState
           })
           apiRef.current?.addFiles?.(remoteScene.files)
+          setCurrentSelection(remoteSelection.selectedElements)
+          setLockedTarget(remoteLockedTarget)
           setStatus('Updated from Codex')
         })
         .catch((error) => setStatus(`Sync failed: ${error.message}`))
@@ -76,6 +95,13 @@ export default function App() {
         files,
         updatedAt: new Date().toISOString()
       })
+      const nextSelection = getSceneSelection(nextScene)
+      const activeLockedTarget = resolveTargetFromScene(nextScene, lockedTargetRef.current?.id)
+      setCurrentSelection(nextSelection.selectedElements)
+      if (lockedTargetRef.current && !activeLockedTarget) {
+        lockedTargetRef.current = null
+        setLockedTarget(null)
+      }
       try {
         const response = await fetch('/api/scene', {
           method: 'PUT',
@@ -89,13 +115,18 @@ export default function App() {
         if (response.status === 409) {
           const payload = await response.json()
           const remoteScene = normalizeScenePayload(payload.scene)
+          const remoteSelection = getSceneSelection(remoteScene)
+          const remoteLockedTarget = resolveTargetFromScene(remoteScene, activeLockedTarget?.id)
           lastRemoteSceneAtRef.current = remoteScene.updatedAt
           lastRevisionRef.current = remoteScene.revision
+          lockedTargetRef.current = remoteLockedTarget
           apiRef.current?.updateScene({
             elements: remoteScene.elements,
             appState: remoteScene.appState
           })
           apiRef.current?.addFiles?.(remoteScene.files)
+          setCurrentSelection(remoteSelection.selectedElements)
+          setLockedTarget(remoteLockedTarget)
           setStatus('Reloaded newer canvas state')
           return
         }
@@ -104,16 +135,24 @@ export default function App() {
         await fetch('/api/selection', {
           method: 'PUT',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ selection: getSceneSelection(nextScene) })
+          body: JSON.stringify({
+            selection: {
+              ...nextSelection,
+              lockedTarget: activeLockedTarget
+            }
+          })
         })
         const savedScene = normalizeScenePayload(payload.scene)
+        const savedLockedTarget = resolveTargetFromScene(savedScene, activeLockedTarget?.id)
         lastRemoteSceneAtRef.current = savedScene.updatedAt
         lastRevisionRef.current = savedScene.revision
+        lockedTargetRef.current = savedLockedTarget
         apiRef.current?.updateScene({
           elements: savedScene.elements,
           appState: savedScene.appState
         })
         apiRef.current?.addFiles?.(savedScene.files)
+        setLockedTarget(savedLockedTarget)
         setStatus(STATUS_AUTOSAVE_ON)
       } catch (error) {
         setStatus(`Save failed: ${error.message}`)
@@ -141,6 +180,38 @@ export default function App() {
     setStatus(STATUS_AUTOSAVE_ON)
   }, [])
 
+  const persistLockedTarget = useCallback(async (target) => {
+    lockedTargetRef.current = target
+    setLockedTarget(target)
+    await fetch('/api/selection', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        selection: {
+          selectedElements: currentSelection,
+          lockedTarget: target,
+          updatedAt: new Date().toISOString()
+        }
+      })
+    })
+  }, [currentSelection])
+
+  const lockCurrentTarget = useCallback(() => {
+    const target = currentSelection.find((element) => element.type === 'image' || element.isAiImageHolder)
+    if (!target) return
+    persistLockedTarget(target).then(
+      () => setStatus(`Locked target: ${targetKindLabel(target)}`),
+      (error) => setStatus(`Lock failed: ${error.message}`)
+    )
+  }, [currentSelection, persistLockedTarget])
+
+  const clearLockedTarget = useCallback(() => {
+    persistLockedTarget(null).then(
+      () => setStatus('Target lock cleared'),
+      (error) => setStatus(`Unlock failed: ${error.message}`)
+    )
+  }, [persistLockedTarget])
+
   if (!initialData) {
     return (
       <main className="app-shell">
@@ -149,26 +220,53 @@ export default function App() {
     )
   }
 
+  const activeTarget = lockedTarget ?? currentSelection[0] ?? null
+  const canLockCurrentTarget = currentSelection.some((element) => element.type === 'image' || element.isAiImageHolder)
+  const targetStateLabel = lockedTarget ? '已锁定' : activeTarget ? '当前选中' : '未选择'
+
   return (
     <main className="app-shell">
       <header className="topbar">
-        <div>
+        <div className="brand-block">
           <h1>Canvaswright</h1>
-          <p>Excalidraw canvas saved in this project</p>
+          <p>项目本地 Excalidraw 画布</p>
         </div>
-        <div className="topbar-actions">
-          <span className="status">{status}</span>
-          <div className="holder-action">
+        <div className="codex-toolbar" aria-label="Codex target tools">
+          <div className={`target-pill ${lockedTarget ? 'is-locked' : activeTarget ? 'is-selected' : 'is-empty'}`}>
+            <span className="target-dot" aria-hidden="true" />
+            <span className="target-state">{targetStateLabel}</span>
+            <strong>{activeTarget ? targetKindLabel(activeTarget) : '选择目标'}</strong>
+            <small>{activeTarget ? shortElementId(activeTarget.id) : '图片或占位框'}</small>
+          </div>
+          <div className="icon-actions">
+            {lockedTarget ? (
+              <button type="button" className="icon-button is-active" onClick={clearLockedTarget} title="取消锁定 Codex 目标" aria-label="取消锁定 Codex 目标">
+                <Icon name="unlock" />
+                <span className="sr-only">取消锁定</span>
+              </button>
+            ) : (
+              <button type="button" className="icon-button" onClick={lockCurrentTarget} disabled={!canLockCurrentTarget} title="锁定当前选中图片或占位框" aria-label="锁定当前选中图片或占位框">
+                <Icon name="lock" />
+                <span className="sr-only">锁定目标</span>
+              </button>
+            )}
             <button
               type="button"
+              className="icon-button"
               onClick={addAiHolder}
-              title="在画布上添加一个生成图片的目标区域；选中它后，Codex 会把生成图填入这个框。"
+              title="添加生成占位框。选中它后，Codex 会把生成图填入这个框。"
+              aria-label="添加生成占位框"
             >
-              添加生成占位框
+              <Icon name="placeholder" />
+              <span className="sr-only">添加生成占位框</span>
             </button>
-            <span>规划图片位置，选中后让 Codex 填图</span>
           </div>
+          <p className="toolbar-hint">
+            <Icon name="info" />
+            选中图片后点锁定，继续画标注也不会丢目标
+          </p>
         </div>
+        <span className="status">{status}</span>
       </header>
       <section className="canvas-frame" aria-label="Canvaswright Excalidraw canvas">
         <Excalidraw
@@ -183,4 +281,65 @@ export default function App() {
       </section>
     </main>
   )
+}
+
+function Icon({ name }) {
+  if (name === 'lock') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M7 10V8a5 5 0 0 1 10 0v2" />
+        <rect x="5" y="10" width="14" height="10" rx="2" />
+        <path d="M12 14v2" />
+      </svg>
+    )
+  }
+  if (name === 'unlock') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M7 10V8a5 5 0 0 1 9-3" />
+        <rect x="5" y="10" width="14" height="10" rx="2" />
+        <path d="M12 14v2" />
+      </svg>
+    )
+  }
+  if (name === 'placeholder') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="4" y="5" width="16" height="14" rx="2" />
+        <path d="M8 15l3-3 2 2 3-4 2 5" />
+      </svg>
+    )
+  }
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 10v6" />
+      <path d="M12 7h.01" />
+    </svg>
+  )
+}
+
+function resolveTargetFromScene(scenePayload, elementId) {
+  if (!elementId) return null
+  const scene = normalizeScenePayload(scenePayload)
+  return getSceneSelection({
+    ...scene,
+    appState: {
+      ...scene.appState,
+      selectedElementIds: { [elementId]: true }
+    }
+  }).selectedElements[0] ?? null
+}
+
+function targetKindLabel(target) {
+  if (target?.isAiImageHolder) return '生成占位框'
+  if (target?.type === 'image') return '图片'
+  if (target?.type === 'text') return '文字标注'
+  if (target?.type) return `${target.type} 元素`
+  return '未知元素'
+}
+
+function shortElementId(id) {
+  if (!id) return ''
+  return id.length > 28 ? `${id.slice(0, 18)}...${id.slice(-6)}` : id
 }

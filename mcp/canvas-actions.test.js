@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, it } from 'node:test'
 import { createAiImageHolderElement } from '../src/lib/scene.js'
-import { loadScene, saveScene } from '../src/server/storage.js'
+import { loadScene, saveScene, saveSelection } from '../src/server/storage.js'
 import {
   exportCanvaswrightEditTask,
   exportCanvaswrightImage,
@@ -165,6 +165,43 @@ describe('getCanvaswrightEditTasks', () => {
       assert.equal(result.editTasks[0].targetElement.id, 'image-1')
       assert.equal(result.editTasks[0].instructionText, '标题换成金色')
       assert.equal(result.editTasks[0].targetElement.assetUrl, '/page-assets/main/image-1.png')
+    } finally {
+      await rm(projectDir, { recursive: true, force: true })
+    }
+  })
+
+  it('uses a locked target over the transient browser selection', async () => {
+    const projectDir = await mkdtemp(join(tmpdir(), 'canvaswright-mcp-'))
+    try {
+      await saveScene({ projectDir }, {
+        elements: [
+          { id: 'image-1', type: 'image', x: 0, y: 0, width: 300, height: 200, fileId: 'file_image_1' },
+          { id: 'image-2', type: 'image', x: 500, y: 0, width: 300, height: 200, fileId: 'file_image_2' },
+          { id: 'note-1', type: 'text', x: 330, y: 40, width: 120, height: 24, text: '改这张' }
+        ],
+        files: {
+          file_image_1: { dataURL: '/page-assets/main/image-1.png' },
+          file_image_2: { dataURL: '/page-assets/main/image-2.png' }
+        }
+      })
+      await saveSelection(
+        { projectDir },
+        {
+          selectedElements: [{ id: 'note-1', type: 'text' }],
+          lockedTarget: {
+            id: 'image-2',
+            type: 'image',
+            isAiImageHolder: false,
+            bounds: { x: 500, y: 0, width: 300, height: 200 }
+          }
+        }
+      )
+
+      const result = await getCanvaswrightEditTasks({ projectDir })
+
+      assert.equal(result.editTasks.length, 1)
+      assert.equal(result.editTasks[0].targetElement.id, 'image-2')
+      assert.equal(result.editTasks[0].assignment, 'selected-target')
     } finally {
       await rm(projectDir, { recursive: true, force: true })
     }

@@ -81,6 +81,7 @@ export async function saveSelection(args = {}, selection) {
   const paths = resolveCanvasPaths(args)
   const nextSelection = {
     selectedElements: Array.isArray(selection?.selectedElements) ? selection.selectedElements : [],
+    lockedTarget: normalizeSelectionTarget(selection?.lockedTarget),
     updatedAt: typeof selection?.updatedAt === 'string' ? selection.updatedAt : new Date().toISOString()
   }
   await mkdir(paths.canvasDir, { recursive: true })
@@ -95,7 +96,18 @@ export function pageAssetUrl({ pageId = DEFAULT_PAGE_ID, fileName }) {
 function emptySelection() {
   return {
     selectedElements: [],
+    lockedTarget: null,
     updatedAt: null
+  }
+}
+
+function normalizeSelectionTarget(value) {
+  if (!value || typeof value !== 'object' || typeof value.id !== 'string') return null
+  return {
+    id: value.id,
+    type: typeof value.type === 'string' ? value.type : 'unknown',
+    isAiImageHolder: value.isAiImageHolder === true,
+    bounds: value.bounds && typeof value.bounds === 'object' ? value.bounds : null
   }
 }
 
