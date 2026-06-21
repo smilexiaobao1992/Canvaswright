@@ -263,7 +263,7 @@ export default function App() {
           </div>
           <p className="toolbar-hint">
             <Icon name="info" />
-            选中图片后点锁定，继续画标注也不会丢目标
+            锁定后，画标注不会丢目标
           </p>
         </div>
         <span className="status">{status}</span>

@@ -194,29 +194,29 @@ button:disabled {
   stroke-width: 1.8;
 }
 
-.toolbar-hint {
+.codex-toolbar .toolbar-hint {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   margin: 0;
-  max-width: 260px;
+  max-width: 190px;
   overflow: hidden;
-  color: #637083;
-  font-size: 12px;
-  line-height: 1.2;
+  color: #8a95a6;
+  font-size: 11px;
+  line-height: 1.15;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.toolbar-hint svg {
-  width: 13px;
-  height: 13px;
+.codex-toolbar .toolbar-hint svg {
+  width: 12px;
+  height: 12px;
   flex: 0 0 auto;
   fill: none;
   stroke: currentColor;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 1.8;
+  stroke-width: 1.7;
 }
 
 .status {
