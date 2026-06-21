@@ -30,6 +30,7 @@ export function planImageInsertion({
   const anchor = selected ? activeElements.find((element) => element.id === selected.id) : null
   const holderSelected = anchor ? isAiImageHolder(anchor) : false
   const targetBounds = chooseTargetBounds({
+    activeElements,
     anchor,
     holderSelected,
     imageSize,
@@ -79,7 +80,7 @@ export function planImageInsertion({
   }
 }
 
-function chooseTargetBounds({ anchor, holderSelected, imageSize, mode, placement, margin }) {
+function chooseTargetBounds({ activeElements, anchor, holderSelected, imageSize, mode, placement, margin }) {
   if (anchor && (holderSelected || mode === 'replace')) return elementBounds(anchor)
 
   const width = Math.min(finiteNumber(imageSize?.width, DEFAULT_MAX_IMAGE_WIDTH), DEFAULT_MAX_IMAGE_WIDTH)
@@ -87,7 +88,7 @@ function chooseTargetBounds({ anchor, holderSelected, imageSize, mode, placement
   const sourceHeight = Math.max(1, finiteNumber(imageSize?.height, width))
   const height = Math.round(width * (sourceHeight / sourceWidth))
 
-  if (!anchor) return { x: 0, y: 0, width, height }
+  if (!anchor) return unanchoredTargetBounds({ activeElements, width, height, margin })
 
   const anchorBounds = elementBounds(anchor)
   if (placement === 'below') {
@@ -112,6 +113,32 @@ function chooseTargetBounds({ anchor, holderSelected, imageSize, mode, placement
     y: anchorBounds.y,
     width,
     height
+  }
+}
+
+function unanchoredTargetBounds({ activeElements, width, height, margin }) {
+  const contentElements = activeElements.filter((element) => element?.type !== 'selection')
+  if (contentElements.length === 0) return { x: 0, y: 0, width, height }
+
+  const contentBounds = unionBounds(contentElements.map(elementBounds))
+  return {
+    x: contentBounds.x + contentBounds.width + margin,
+    y: contentBounds.y,
+    width,
+    height
+  }
+}
+
+function unionBounds(boundsList) {
+  const left = Math.min(...boundsList.map((bounds) => bounds.x))
+  const top = Math.min(...boundsList.map((bounds) => bounds.y))
+  const right = Math.max(...boundsList.map((bounds) => bounds.x + bounds.width))
+  const bottom = Math.max(...boundsList.map((bounds) => bounds.y + bounds.height))
+  return {
+    x: left,
+    y: top,
+    width: right - left,
+    height: bottom - top
   }
 }
 

@@ -66,6 +66,38 @@ describe('planImageInsertion', () => {
     assert.equal(result.imageElement.height, 256)
   })
 
+  it('places an unanchored image to the right of existing canvas content', () => {
+    const sourceImage = {
+      type: 'image',
+      id: 'image-1',
+      x: 0,
+      y: 0,
+      width: 512,
+      height: 768,
+      fileId: 'file_source',
+      isDeleted: false
+    }
+    const scene = normalizeScenePayload({
+      elements: [sourceImage],
+      files: {}
+    })
+
+    const result = planImageInsertion({
+      scene,
+      assetUrl: '/page-assets/main/new-poster.png',
+      fileName: 'new-poster.png',
+      mimeType: 'image/png',
+      imageSize: { width: 800, height: 1200 },
+      now: 2500,
+      idSeed: 'new-poster'
+    })
+
+    assert.equal(result.imageElement.x, 552)
+    assert.equal(result.imageElement.y, 0)
+    assert.equal(result.imageElement.width, 512)
+    assert.equal(result.imageElement.height, 768)
+  })
+
   it('replaces a selected image in place when mode is replace', () => {
     const sourceImage = {
       type: 'image',
