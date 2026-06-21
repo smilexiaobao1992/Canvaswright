@@ -4,6 +4,7 @@ import {
   getSceneSelection,
   isAiImageHolder,
   normalizeScenePayload,
+  rightOfCanvasContentBounds,
   sanitizeIdPart
 } from './scene.js'
 
@@ -117,29 +118,7 @@ function chooseTargetBounds({ activeElements, anchor, holderSelected, imageSize,
 }
 
 function unanchoredTargetBounds({ activeElements, width, height, margin }) {
-  const contentElements = activeElements.filter((element) => element?.type !== 'selection')
-  if (contentElements.length === 0) return { x: 0, y: 0, width, height }
-
-  const contentBounds = unionBounds(contentElements.map(elementBounds))
-  return {
-    x: contentBounds.x + contentBounds.width + margin,
-    y: contentBounds.y,
-    width,
-    height
-  }
-}
-
-function unionBounds(boundsList) {
-  const left = Math.min(...boundsList.map((bounds) => bounds.x))
-  const top = Math.min(...boundsList.map((bounds) => bounds.y))
-  const right = Math.max(...boundsList.map((bounds) => bounds.x + bounds.width))
-  const bottom = Math.max(...boundsList.map((bounds) => bounds.y + bounds.height))
-  return {
-    x: left,
-    y: top,
-    width: right - left,
-    height: bottom - top
-  }
+  return rightOfCanvasContentBounds(activeElements, { width, height, margin })
 }
 
 function createImageElement({ id, fileId, bounds, now, sourceElementId }) {

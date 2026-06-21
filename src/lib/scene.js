@@ -93,6 +93,27 @@ export function elementBounds(element) {
   }
 }
 
+export function rightOfCanvasContentBounds(
+  elements,
+  { width = 320, height = 220, margin = 40, emptyX = 0, emptyY = 0 } = {}
+) {
+  const activeElements = Array.isArray(elements)
+    ? elements.filter((element) => element?.isDeleted !== true && element?.type !== 'selection')
+    : []
+
+  if (activeElements.length === 0) {
+    return { x: emptyX, y: emptyY, width, height }
+  }
+
+  const contentBounds = unionBounds(activeElements.map(elementBounds))
+  return {
+    x: contentBounds.x + contentBounds.width + margin,
+    y: contentBounds.y,
+    width,
+    height
+  }
+}
+
 export function createElementId(seed = 'element') {
   return `${sanitizeIdPart(seed)}_${Date.now().toString(36)}`
 }
@@ -112,6 +133,19 @@ export function finiteNumber(value, fallback) {
 
 function safeObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {}
+}
+
+function unionBounds(boundsList) {
+  const left = Math.min(...boundsList.map((bounds) => bounds.x))
+  const top = Math.min(...boundsList.map((bounds) => bounds.y))
+  const right = Math.max(...boundsList.map((bounds) => bounds.x + bounds.width))
+  const bottom = Math.max(...boundsList.map((bounds) => bounds.y + bounds.height))
+  return {
+    x: left,
+    y: top,
+    width: right - left,
+    height: bottom - top
+  }
 }
 
 function normalizeAppState(value) {

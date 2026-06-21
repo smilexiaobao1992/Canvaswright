@@ -70,6 +70,20 @@ button:hover {
   gap: 12px;
 }
 
+.holder-action {
+  display: grid;
+  gap: 3px;
+  justify-items: end;
+}
+
+.holder-action span {
+  max-width: 220px;
+  color: #637083;
+  font-size: 12px;
+  line-height: 1.3;
+  text-align: right;
+}
+
 .status {
   max-width: 320px;
   overflow: hidden;
@@ -99,5 +113,9 @@ button:hover {
   .topbar-actions {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .holder-action {
+    justify-items: end;
   }
 }

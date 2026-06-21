@@ -3,7 +3,8 @@ import { describe, it } from 'node:test'
 import {
   createAiImageHolderElement,
   getSceneSelection,
-  normalizeScenePayload
+  normalizeScenePayload,
+  rightOfCanvasContentBounds
 } from './scene.js'
 
 describe('normalizeScenePayload', () => {
@@ -64,5 +65,17 @@ describe('normalizeScenePayload', () => {
 
     assert.equal(scene.revision, 7)
     assert.equal(scene.source, 'mcp')
+  })
+
+  it('places new generated placeholders to the right of existing canvas content', () => {
+    const bounds = rightOfCanvasContentBounds(
+      [
+        { id: 'image-1', type: 'image', x: 10, y: 20, width: 512, height: 768, isDeleted: false },
+        { id: 'deleted-1', type: 'image', x: 900, y: 20, width: 512, height: 768, isDeleted: true }
+      ],
+      { width: 320, height: 220, margin: 40, emptyX: 80, emptyY: 180 }
+    )
+
+    assert.deepEqual(bounds, { x: 562, y: 20, width: 320, height: 220 })
   })
 })

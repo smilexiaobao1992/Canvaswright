@@ -1,7 +1,7 @@
 import { Excalidraw } from '@excalidraw/excalidraw'
 import '@excalidraw/excalidraw/index.css'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { createAiImageHolderElement, getSceneSelection, normalizeScenePayload } from './lib/scene.js'
+import { createAiImageHolderElement, getSceneSelection, normalizeScenePayload, rightOfCanvasContentBounds } from './lib/scene.js'
 
 const SAVE_DELAY_MS = 350
 const STATUS_AUTOSAVE_ON = 'Autosave on'
@@ -125,7 +125,13 @@ export default function App() {
     const api = apiRef.current
     if (!api) return
     const elements = api.getSceneElementsIncludingDeleted()
-    const holder = createAiImageHolderElement({ x: 80, y: 180 })
+    const holderBounds = rightOfCanvasContentBounds(elements, {
+      width: 320,
+      height: 220,
+      emptyX: 80,
+      emptyY: 180
+    })
+    const holder = createAiImageHolderElement(holderBounds)
     api.updateScene({
       elements: [...elements, holder],
       appState: {
@@ -152,9 +158,16 @@ export default function App() {
         </div>
         <div className="topbar-actions">
           <span className="status">{status}</span>
-          <button type="button" onClick={addAiHolder}>
-            AI image holder
-          </button>
+          <div className="holder-action">
+            <button
+              type="button"
+              onClick={addAiHolder}
+              title="在画布上添加一个生成图片的目标区域；选中它后，Codex 会把生成图填入这个框。"
+            >
+              添加生成占位框
+            </button>
+            <span>规划图片位置，选中后让 Codex 填图</span>
+          </div>
         </div>
       </header>
       <section className="canvas-frame" aria-label="Canvaswright Excalidraw canvas">
