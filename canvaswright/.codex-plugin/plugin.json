@@ -1,0 +1,36 @@
+{
+  "name": "canvaswright",
+  "version": "0.1.0",
+  "description": "A local Excalidraw canvas for Codex-assisted image creation and visual iteration.",
+  "author": {
+    "name": "Local Developer"
+  },
+  "license": "MIT",
+  "keywords": [
+    "canvas",
+    "excalidraw",
+    "image-generation",
+    "codex"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Canvaswright",
+    "shortDescription": "Create and iterate images on a local Excalidraw canvas.",
+    "longDescription": "Canvaswright gives Codex a project-local Excalidraw canvas with saved scenes, selected-element awareness, AI image holders, and MCP insertion for generated bitmap assets.",
+    "developerName": "Local Developer",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive Excalidraw canvas",
+      "Project-local persistence",
+      "AI image holder insertion",
+      "Annotation-driven image iteration"
+    ],
+    "brandColor": "#172033",
+    "defaultPrompt": [
+      "Open the Canvaswright canvas for this project.",
+      "Generate an image into the selected Canvaswright holder.",
+      "Use my annotated canvas screenshot to create a clean revision."
+    ]
+  }
+}
