@@ -238,6 +238,10 @@ canvas/
 
 `package.json` 保留依赖范围，精确安装版本由 `package-lock.json` 锁定。
 
+## 产品路线
+
+- 多画布与多项目管理：后续计划支持在一个 Canvaswright 实例里新建多个画布，并自由切换不同项目或不同任务的画布，适合同时推进多组产品图、海报图或客户项目。
+
 ## 开发与验证
 
 ```bash
@@ -305,6 +309,10 @@ Rules:
 - An annotation that clearly touches multiple images is marked ambiguous instead of being guessed.
 
 Codex uses `get_canvaswright_edit_tasks` to get structured tasks, generates revised images, and inserts each result beside its source image with `insert_canvaswright_image` and `anchorElementId`.
+
+### Roadmap
+
+- Multi-canvas and multi-project support: a future version should allow creating multiple canvases in one Canvaswright instance and switching freely between project or task canvases.
 
 ### Development
 
