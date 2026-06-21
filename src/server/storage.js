@@ -35,10 +35,32 @@ export async function loadScene(args = {}) {
 
 export async function saveScene(args = {}, scene) {
   const paths = resolveCanvasPaths(args)
-  const normalizedScene = normalizeScenePayload(scene)
+  const previousScene = await loadSceneIfPresent(paths.sceneFile)
+  if (
+    typeof args.expectedRevision === 'number' &&
+    previousScene &&
+    previousScene.revision !== args.expectedRevision
+  ) {
+    throw new Error(`Scene revision conflict: expected ${args.expectedRevision}, found ${previousScene.revision}.`)
+  }
+  const normalizedScene = normalizeScenePayload({
+    ...scene,
+    revision: (previousScene?.revision ?? 0) + 1,
+    source: args.source || scene?.source || 'unknown',
+    updatedAt: scene?.updatedAt || new Date().toISOString()
+  })
   await mkdir(paths.pageDir, { recursive: true })
   await writeFile(paths.sceneFile, `${JSON.stringify(normalizedScene, null, 2)}\n`)
   return { scene: normalizedScene, paths }
+}
+
+async function loadSceneIfPresent(sceneFile) {
+  try {
+    return normalizeScenePayload(JSON.parse(await readFile(sceneFile, 'utf8')))
+  } catch (error) {
+    if (error?.code === 'ENOENT') return null
+    throw error
+  }
 }
 
 export async function readSelection(args = {}) {

@@ -10,6 +10,8 @@ export function normalizeScenePayload(value) {
     elements: Array.isArray(payload.elements) ? payload.elements : [],
     appState: normalizeAppState(payload.appState),
     files: safeObject(payload.files),
+    revision: Math.max(0, Math.floor(finiteNumber(payload.revision, 0))),
+    source: typeof payload.source === 'string' && payload.source.trim() ? payload.source : 'unknown',
     updatedAt: typeof payload.updatedAt === 'string' ? payload.updatedAt : new Date().toISOString()
   }
 }

@@ -16,6 +16,8 @@ describe('normalizeScenePayload', () => {
     assert.deepEqual(scene.files, {})
     assert.equal(scene.appState.viewBackgroundColor, '#ffffff')
     assert.equal(typeof scene.updatedAt, 'string')
+    assert.equal(scene.revision, 0)
+    assert.equal(scene.source, 'unknown')
   })
 
   it('drops deleted elements from the active selection summary', () => {
@@ -52,5 +54,15 @@ describe('normalizeScenePayload', () => {
 
     assert.deepEqual(scene.appState.selectedElementIds, { 'rect-1': true })
     assert.equal('collaborators' in scene.appState, false)
+  })
+
+  it('preserves scene revision and source metadata', () => {
+    const scene = normalizeScenePayload({
+      revision: 7,
+      source: 'mcp'
+    })
+
+    assert.equal(scene.revision, 7)
+    assert.equal(scene.source, 'mcp')
   })
 })

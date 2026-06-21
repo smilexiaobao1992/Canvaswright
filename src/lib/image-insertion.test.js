@@ -65,4 +65,39 @@ describe('planImageInsertion', () => {
     assert.equal(result.imageElement.width, 512)
     assert.equal(result.imageElement.height, 256)
   })
+
+  it('replaces a selected image in place when mode is replace', () => {
+    const sourceImage = {
+      type: 'image',
+      id: 'image-1',
+      x: 100,
+      y: 120,
+      width: 240,
+      height: 320,
+      fileId: 'file_source',
+      isDeleted: false
+    }
+    const scene = normalizeScenePayload({
+      elements: [sourceImage],
+      appState: { selectedElementIds: { 'image-1': true } },
+      files: {}
+    })
+
+    const result = planImageInsertion({
+      scene,
+      assetUrl: '/page-assets/main/revision.png',
+      fileName: 'revision.png',
+      mimeType: 'image/png',
+      imageSize: { width: 800, height: 400 },
+      mode: 'replace',
+      now: 3000,
+      idSeed: 'revision'
+    })
+
+    assert.equal(result.imageElement.x, 100)
+    assert.equal(result.imageElement.y, 120)
+    assert.equal(result.imageElement.width, 240)
+    assert.equal(result.imageElement.height, 320)
+    assert.equal(result.scene.elements.find((element) => element.id === 'image-1').isDeleted, true)
+  })
 })

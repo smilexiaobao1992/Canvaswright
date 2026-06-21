@@ -24,10 +24,30 @@ describe('canvas storage', () => {
   it('saves and loads a normalized Excalidraw scene', async () => {
     const projectDir = await mkdtemp(join(tmpdir(), 'canvaswright-'))
     try {
-      await saveScene({ projectDir }, { elements: [{ id: 'rect-1', type: 'rectangle' }] })
+      await saveScene({ projectDir, source: 'test' }, { elements: [{ id: 'rect-1', type: 'rectangle' }] })
 
       const scene = await loadScene({ projectDir })
       assert.equal(scene.type, 'canvaswright/excalidraw-scene')
+      assert.equal(scene.elements[0].id, 'rect-1')
+      assert.equal(scene.revision, 1)
+      assert.equal(scene.source, 'test')
+    } finally {
+      await rm(projectDir, { recursive: true, force: true })
+    }
+  })
+
+  it('rejects stale scene writes when expectedRevision does not match', async () => {
+    const projectDir = await mkdtemp(join(tmpdir(), 'canvaswright-'))
+    try {
+      await saveScene({ projectDir, source: 'first' }, { elements: [{ id: 'rect-1', type: 'rectangle' }] })
+
+      await assert.rejects(
+        saveScene({ projectDir, source: 'stale', expectedRevision: 0 }, { elements: [] }),
+        /Scene revision conflict/
+      )
+
+      const scene = await loadScene({ projectDir })
+      assert.equal(scene.revision, 1)
       assert.equal(scene.elements[0].id, 'rect-1')
     } finally {
       await rm(projectDir, { recursive: true, force: true })

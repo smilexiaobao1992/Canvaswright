@@ -12,6 +12,7 @@ export default function App() {
   const apiRef = useRef(null)
   const saveTimerRef = useRef(null)
   const lastRemoteSceneAtRef = useRef(null)
+  const lastRevisionRef = useRef(0)
 
   useEffect(() => {
     let cancelled = false
@@ -21,6 +22,7 @@ export default function App() {
         if (cancelled) return
         const nextScene = normalizeScenePayload(payload.scene)
         lastRemoteSceneAtRef.current = nextScene.updatedAt
+        lastRevisionRef.current = nextScene.revision
         setScene(nextScene)
         setStatus(STATUS_AUTOSAVE_ON)
       })
@@ -42,6 +44,7 @@ export default function App() {
           const remoteScene = normalizeScenePayload(payload.scene)
           if (remoteScene.updatedAt === lastRemoteSceneAtRef.current) return
           lastRemoteSceneAtRef.current = remoteScene.updatedAt
+          lastRevisionRef.current = remoteScene.revision
           apiRef.current?.updateScene({
             elements: remoteScene.elements,
             appState: remoteScene.appState
@@ -74,17 +77,43 @@ export default function App() {
         updatedAt: new Date().toISOString()
       })
       try {
-        await fetch('/api/scene', {
+        const response = await fetch('/api/scene', {
           method: 'PUT',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ scene: nextScene })
+          body: JSON.stringify({
+            scene: nextScene,
+            source: 'browser',
+            expectedRevision: lastRevisionRef.current
+          })
         })
+        if (response.status === 409) {
+          const payload = await response.json()
+          const remoteScene = normalizeScenePayload(payload.scene)
+          lastRemoteSceneAtRef.current = remoteScene.updatedAt
+          lastRevisionRef.current = remoteScene.revision
+          apiRef.current?.updateScene({
+            elements: remoteScene.elements,
+            appState: remoteScene.appState
+          })
+          apiRef.current?.addFiles?.(remoteScene.files)
+          setStatus('Reloaded newer canvas state')
+          return
+        }
+        if (!response.ok) throw new Error(await response.text())
+        const payload = await response.json()
         await fetch('/api/selection', {
           method: 'PUT',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ selection: getSceneSelection(nextScene) })
         })
-        lastRemoteSceneAtRef.current = nextScene.updatedAt
+        const savedScene = normalizeScenePayload(payload.scene)
+        lastRemoteSceneAtRef.current = savedScene.updatedAt
+        lastRevisionRef.current = savedScene.revision
+        apiRef.current?.updateScene({
+          elements: savedScene.elements,
+          appState: savedScene.appState
+        })
+        apiRef.current?.addFiles?.(savedScene.files)
         setStatus(STATUS_AUTOSAVE_ON)
       } catch (error) {
         setStatus(`Save failed: ${error.message}`)

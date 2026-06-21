@@ -16,4 +16,6 @@ Use this skill when the user asks to create, fill, replace, or place an AI-gener
 5. Insert the local image with `insert_canvaswright_image`, passing the active project directory and the generated image path.
 6. Confirm the inserted element id, asset path, and whether it filled an AI holder.
 
+Use `mode: "insert"` by default. Use `mode: "replace"` only when the user explicitly asks to replace the selected or anchored image in place.
+
 Do not delete the AI holder unless the user explicitly asks for replacement. The holder remains useful as a persistent target for later generations.

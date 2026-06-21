@@ -13,9 +13,17 @@ Use this skill when the user asks to modify one or more images from Canvaswright
 2. Call `get_canvaswright_edit_tasks` before interpreting the screenshot manually.
 3. If it returns one or more edit tasks, treat each task as a target image plus its related annotations.
 4. If it returns ambiguous annotations, ask the user to select the intended target image or move the annotation closer to its image.
-5. Generate a clean image for each task that applies the requested changes and removes annotation marks.
-6. Insert each generated bitmap with `insert_canvaswright_image`, passing `anchorElementId: task.targetElement.id` so the result appears beside the source image.
-7. Keep original images and annotations intact unless the user explicitly asks to replace or remove them.
+5. For each task, call `export_canvaswright_edit_task` with `targetElementId: task.targetElement.id` to get a local task bundle and source image file.
+6. Generate a clean image for each task that applies the requested changes and removes annotation marks.
+7. Insert each generated bitmap with `insert_canvaswright_image`, passing `anchorElementId: task.targetElement.id` so the result appears beside the source image.
+8. If there are multiple generated images, use `insert_canvaswright_images` with one item per task.
+9. Keep original images and annotations intact unless the user explicitly asks to replace or remove them.
+
+## Replacement mode
+
+Use `mode: "insert"` by default so the original remains visible for comparison.
+
+Use `mode: "replace"` only when the user explicitly asks to replace the original. Replacement marks the source image element deleted and inserts the revised image in the same bounds.
 
 ## Multi-image rules
 

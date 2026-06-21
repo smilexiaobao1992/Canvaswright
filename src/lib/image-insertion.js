@@ -16,6 +16,7 @@ export function planImageInsertion({
   fileName = 'image.png',
   mimeType = 'image/png',
   imageSize,
+  mode = 'insert',
   placement = 'right',
   margin = DEFAULT_MARGIN,
   now = Date.now(),
@@ -32,6 +33,7 @@ export function planImageInsertion({
     anchor,
     holderSelected,
     imageSize,
+    mode,
     placement,
     margin
   })
@@ -45,9 +47,12 @@ export function planImageInsertion({
     now,
     sourceElementId: anchor?.id ?? null
   })
+  const nextElements = mode === 'replace' && anchor
+    ? currentScene.elements.map((element) => element.id === anchor.id ? { ...element, isDeleted: true, updated: now } : element)
+    : currentScene.elements
   const nextScene = normalizeScenePayload({
     ...currentScene,
-    elements: [...currentScene.elements, imageElement],
+    elements: [...nextElements, imageElement],
     files: {
       ...currentScene.files,
       [fileId]: {
@@ -74,8 +79,8 @@ export function planImageInsertion({
   }
 }
 
-function chooseTargetBounds({ anchor, holderSelected, imageSize, placement, margin }) {
-  if (anchor && holderSelected) return elementBounds(anchor)
+function chooseTargetBounds({ anchor, holderSelected, imageSize, mode, placement, margin }) {
+  if (anchor && (holderSelected || mode === 'replace')) return elementBounds(anchor)
 
   const width = Math.min(finiteNumber(imageSize?.width, DEFAULT_MAX_IMAGE_WIDTH), DEFAULT_MAX_IMAGE_WIDTH)
   const sourceWidth = Math.max(1, finiteNumber(imageSize?.width, width))

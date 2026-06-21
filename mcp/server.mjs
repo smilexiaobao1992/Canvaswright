@@ -1,11 +1,9 @@
 import readline from 'node:readline'
-import { getCanvaswrightEditTasks, getCanvaswrightSelection, insertCanvaswrightImage } from './canvas-actions.mjs'
+import { handleToolCall } from './tool-handlers.mjs'
+import { toolDefinitions } from './tool-definitions.mjs'
 
 const SERVER_NAME = 'Canvaswright MCP'
 const SERVER_VERSION = '0.1.0'
-const TOOL_GET_SELECTION = 'get_canvaswright_selection'
-const TOOL_GET_EDIT_TASKS = 'get_canvaswright_edit_tasks'
-const TOOL_INSERT_IMAGE = 'insert_canvaswright_image'
 
 const JsonRpcError = {
   METHOD_NOT_FOUND: -32601,
@@ -24,142 +22,6 @@ function sendError(id, code, message) {
   send({ jsonrpc: '2.0', id, error: { code, message } })
 }
 
-function toolDefinitions() {
-  return [
-    {
-      name: TOOL_GET_SELECTION,
-      title: 'Get Canvaswright Selection',
-      description: 'Return the selected Excalidraw elements from the project-local Canvaswright canvas.',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          projectDir: {
-            type: 'string',
-            description: 'Absolute project directory containing canvas/. Defaults to the current working directory.'
-          },
-          canvasDir: {
-            type: 'string',
-            description: 'Absolute canvas directory. Overrides projectDir.'
-          }
-        },
-        additionalProperties: false
-      },
-      annotations: {
-        readOnlyHint: true,
-        destructiveHint: false,
-        idempotentHint: true,
-        openWorldHint: false
-      }
-    },
-    {
-      name: TOOL_GET_EDIT_TASKS,
-      title: 'Get Canvaswright Edit Tasks',
-      description:
-        'Analyze the canvas and group annotation elements with the image elements they should modify. Selection takes priority; otherwise annotations are assigned by overlap and proximity.',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          projectDir: {
-            type: 'string',
-            description: 'Absolute project directory containing canvas/. Defaults to the current working directory.'
-          },
-          canvasDir: {
-            type: 'string',
-            description: 'Absolute canvas directory. Overrides projectDir.'
-          }
-        },
-        additionalProperties: false
-      },
-      annotations: {
-        readOnlyHint: true,
-        destructiveHint: false,
-        idempotentHint: true,
-        openWorldHint: false
-      }
-    },
-    {
-      name: TOOL_INSERT_IMAGE,
-      title: 'Insert Canvaswright Image',
-      description:
-        'Copy a local bitmap into canvas/pages/main/assets, add it to the Excalidraw scene, and place it in the selected AI holder or beside the selected element.',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          imagePath: { type: 'string', description: 'Absolute local PNG or JPEG path to insert.' },
-          projectDir: { type: 'string', description: 'Absolute project directory containing canvas/.' },
-          canvasDir: { type: 'string', description: 'Absolute canvas directory. Overrides projectDir.' },
-          fileName: { type: 'string', description: 'Optional destination filename under page assets.' },
-          anchorElementId: {
-            type: 'string',
-            description: 'Optional image or holder element id to place beside or fill. Overrides the current browser selection.'
-          },
-          placement: { type: 'string', enum: ['right', 'left', 'below'], description: 'Placement around a non-holder selection.' },
-          margin: { type: 'number', description: 'Canvas units between anchor and image. Defaults to 40.' }
-        },
-        required: ['imagePath'],
-        additionalProperties: false
-      },
-      annotations: {
-        readOnlyHint: false,
-        destructiveHint: false,
-        idempotentHint: false,
-        openWorldHint: false
-      }
-    }
-  ]
-}
-
-async function handleToolCall(id, params) {
-  if (params?.name === TOOL_GET_SELECTION) {
-    const selection = await getCanvaswrightSelection(params.arguments ?? {})
-    const summary =
-      selection.selectedElements.length === 0
-        ? 'No Canvaswright elements are currently selected.'
-        : selection.selectedElements
-            .map((element) => `${element.id} [${element.type ?? 'unknown'}]${element.isAiImageHolder ? ' AI holder' : ''}`)
-            .join('\n')
-    sendResult(id, {
-      content: [{ type: 'text', text: summary }],
-      structuredContent: { selection }
-    })
-    return
-  }
-
-  if (params?.name === TOOL_GET_EDIT_TASKS) {
-    const result = await getCanvaswrightEditTasks(params.arguments ?? {})
-    const summary =
-      result.editTasks.length === 0
-        ? 'No Canvaswright image edit tasks were detected.'
-        : result.editTasks
-            .map((task) => {
-              const text = task.instructionText ? `: ${task.instructionText}` : ''
-              return `${task.targetElement.id} <= ${task.annotationElements.length} annotation(s)${text}`
-            })
-            .join('\n')
-    sendResult(id, {
-      content: [{ type: 'text', text: summary }],
-      structuredContent: result
-    })
-    return
-  }
-
-  if (params?.name === TOOL_INSERT_IMAGE) {
-    const result = await insertCanvaswrightImage(params.arguments ?? {})
-    sendResult(id, {
-      content: [
-        {
-          type: 'text',
-          text: `Inserted ${result.imageElementId} at (${result.bounds.x}, ${result.bounds.y}) using ${result.assetUrl}.`
-        }
-      ],
-      structuredContent: result
-    })
-    return
-  }
-
-  sendError(id, JsonRpcError.INVALID_PARAMS, `Unknown tool: ${params?.name ?? ''}`)
-}
-
 async function handleRequest(message) {
   const { id, method, params } = message
 
@@ -172,7 +34,7 @@ async function handleRequest(message) {
         version: SERVER_VERSION
       },
       instructions:
-        'Use get_canvaswright_selection to inspect selected Excalidraw elements, get_canvaswright_edit_tasks to group annotations with target images, and insert_canvaswright_image to place local generated images into the project-local Canvaswright canvas.'
+        'Use get_canvaswright_selection to inspect selected Excalidraw elements, get_canvaswright_edit_tasks and export_canvaswright_edit_task to group annotations with target images, then insert_canvaswright_image or insert_canvaswright_images to place local generated images into the project-local Canvaswright canvas.'
     })
     return
   }
@@ -189,7 +51,7 @@ async function handleRequest(message) {
 
   if (method === 'tools/call') {
     try {
-      await handleToolCall(id, params)
+      sendResult(id, await handleToolCall(params))
     } catch (error) {
       sendError(id, JsonRpcError.INVALID_PARAMS, error instanceof Error ? error.message : String(error))
     }

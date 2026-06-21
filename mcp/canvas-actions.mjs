@@ -1,8 +1,9 @@
-import { copyFile, mkdir, readFile, stat } from 'node:fs/promises'
-import { basename, extname, join } from 'node:path'
+import { copyFile, mkdir, readFile, stat, writeFile } from 'node:fs/promises'
+import { basename, join } from 'node:path'
 import { getCanvasEditTasks } from '../src/lib/edit-tasks.js'
 import { planImageInsertion } from '../src/lib/image-insertion.js'
 import { getSceneSelection, normalizeScenePayload, sanitizeIdPart } from '../src/lib/scene.js'
+import { copyAssetToExports, mimeTypeForFile, sanitizeFileName, uniqueAssetPath } from '../src/server/assets.js'
 import { loadScene, pageAssetUrl, readSelection, resolveCanvasPaths, saveScene } from '../src/server/storage.js'
 
 export async function getCanvaswrightSelection(args = {}) {
@@ -52,12 +53,13 @@ export async function insertCanvaswrightImage(args = {}) {
     fileName,
     mimeType: mimeTypeForFile(fileName),
     imageSize,
+    mode: args.mode,
     placement: args.placement,
     margin: args.margin,
     now: args.now,
     idSeed: sanitizeIdPart(fileName)
   })
-  await saveScene(args, result.scene)
+  await saveScene({ ...args, source: 'mcp' }, result.scene)
 
   return {
     pageId: paths.pageId,
@@ -67,12 +69,98 @@ export async function insertCanvaswrightImage(args = {}) {
     imageElementId: result.imageElement.id,
     anchorElementId: result.anchorElementId,
     filledAiImageHolder: result.filledAiImageHolder,
+    mode: args.mode === 'replace' ? 'replace' : 'insert',
     bounds: {
       x: result.imageElement.x,
       y: result.imageElement.y,
       width: result.imageElement.width,
       height: result.imageElement.height
     }
+  }
+}
+
+export async function insertCanvaswrightImages(args = {}) {
+  if (!Array.isArray(args.images) || args.images.length === 0) {
+    throw new Error('images must be a non-empty array.')
+  }
+
+  const results = []
+  for (const imageArgs of args.images) {
+    results.push(await insertCanvaswrightImage({
+      ...args,
+      ...imageArgs,
+      images: undefined
+    }))
+  }
+  return { results }
+}
+
+export async function exportCanvaswrightEditTask(args = {}) {
+  const paths = resolveCanvasPaths(args)
+  const scene = await loadScene(args)
+  const tasks = await getCanvaswrightEditTasks(args)
+  const task = selectEditTask(tasks.editTasks, args)
+  if (!task) throw new Error('No Canvaswright image edit task was found.')
+
+  const fileId = task.targetElement.fileId
+  const file = fileId ? scene.files[fileId] : null
+  if (!file) throw new Error(`Target image file was not found for element: ${task.targetElement.id}`)
+
+  const exportId = sanitizeIdPart(args.exportName || `task-${task.targetElement.id}`)
+  const exportDir = join(paths.pageDir, 'exports', exportId)
+  const sourceImage = await copyAssetToExports({
+    ...args,
+    pageId: paths.pageId,
+    file,
+    exportDir,
+    fallbackName: task.targetElement.fileName || `${task.targetElement.id}.png`
+  })
+  const taskFile = join(exportDir, 'task.json')
+  const payload = {
+    task,
+    sourceImage: {
+      filePath: sourceImage.filePath,
+      fileName: sourceImage.fileName,
+      mimeType: sourceImage.mimeType
+    },
+    exportedAt: new Date().toISOString()
+  }
+  await writeFile(taskFile, `${JSON.stringify(payload, null, 2)}\n`)
+
+  return {
+    exportDir,
+    taskFile,
+    sourceImageFile: sourceImage.filePath,
+    task
+  }
+}
+
+export async function exportCanvaswrightImage(args = {}) {
+  const paths = resolveCanvasPaths(args)
+  const scene = await loadScene(args)
+  const selection = await readSelection(args)
+  const imageElement = selectImageElement(scene, selection, args.elementId)
+  if (!imageElement) throw new Error('No Canvaswright image element was found to export.')
+
+  const file = imageElement.fileId ? scene.files[imageElement.fileId] : null
+  if (!file) throw new Error(`Image file was not found for element: ${imageElement.id}`)
+
+  const exportDir = join(paths.pageDir, 'exports', 'images')
+  const exportedImage = await copyAssetToExports({
+    ...args,
+    pageId: paths.pageId,
+    file,
+    exportDir,
+    fileName: args.fileName,
+    fallbackName: file.customData?.fileName || `${imageElement.id}.png`
+  })
+
+  return {
+    exportDir,
+    imageFile: exportedImage.filePath,
+    fileName: exportedImage.fileName,
+    mimeType: exportedImage.mimeType,
+    imageElementId: imageElement.id
   }
 }
 
@@ -94,34 +182,6 @@ function applySelectionToScene(scene, selection, anchorElementId) {
       selectedElementIds: Object.fromEntries(selection.selectedElements.map((element) => [element.id, true]))
     }
   })
-}
-
-async function uniqueAssetPath(dir, requestedFileName) {
-  const extension = extname(requestedFileName)
-  const base = requestedFileName.slice(0, requestedFileName.length - extension.length)
-  let fileName = requestedFileName
-  let counter = 2
-  while (true) {
-    const filePath = join(dir, fileName)
-    try {
-      await stat(filePath)
-      fileName = `${base}-v${counter}${extension}`
-      counter += 1
-    } catch (error) {
-      if (error?.code === 'ENOENT') return { fileName, filePath }
-      throw error
-    }
-  }
-}
-
-function sanitizeFileName(value) {
-  const raw = basename(String(value || 'image.png'))
-  const extension = extname(raw) || '.png'
-  const base = raw
-    .slice(0, raw.length - extname(raw).length)
-    .replace(/[^a-zA-Z0-9._-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-  return `${base || 'image'}${extension}`
 }
 
 async function getImageDimensions(filePath) {
@@ -149,24 +209,19 @@ async function getImageDimensions(filePath) {
   throw new Error(`Could not read image dimensions for ${filePath}. Use PNG or JPEG.`)
 }
 
-function mimeTypeForFile(fileName) {
-  switch (extname(fileName).toLowerCase()) {
-    case '.apng':
-      return 'image/apng'
-    case '.avif':
-      return 'image/avif'
-    case '.gif':
-      return 'image/gif'
-    case '.jpg':
-    case '.jpeg':
-      return 'image/jpeg'
-    case '.png':
-      return 'image/png'
-    case '.svg':
-      return 'image/svg+xml'
-    case '.webp':
-      return 'image/webp'
-    default:
-      return 'application/octet-stream'
+function selectEditTask(editTasks, args) {
+  if (args.targetElementId) {
+    return editTasks.find((task) => task.targetElement.id === String(args.targetElementId)) ?? null
   }
+  const taskIndex = Number.isInteger(args.taskIndex) ? args.taskIndex : 0
+  return editTasks[taskIndex] ?? null
+}
+
+function selectImageElement(scene, selection, elementId) {
+  const activeImages = normalizeScenePayload(scene).elements.filter((element) => element?.type === 'image' && element?.isDeleted !== true)
+  if (elementId) return activeImages.find((element) => element.id === String(elementId)) ?? null
+
+  const selectedIds = new Set((selection?.selectedElements ?? []).map((element) => element.id))
+  const selectedImage = activeImages.find((element) => selectedIds.has(element.id))
+  return selectedImage ?? activeImages[0] ?? null
 }

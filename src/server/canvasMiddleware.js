@@ -1,6 +1,7 @@
 import { createReadStream } from 'node:fs'
 import { stat } from 'node:fs/promises'
 import { basename, extname, join, resolve } from 'node:path'
+import { normalizeSceneAssets } from './assets.js'
 import { loadScene, readSelection, resolveCanvasPaths, saveScene, saveSelection } from './storage.js'
 
 const clients = new Set()
@@ -24,9 +25,18 @@ export function canvasMiddleware(options = {}) {
 
       if (url.pathname === '/api/scene' && req.method === 'PUT') {
         const body = await readJsonBody(req)
-        const result = await saveScene(options, body?.scene ?? body)
+        const scenePayload = body?.scene ?? body
+        const normalizedAssets = await normalizeSceneAssets({ ...options, scene: scenePayload })
+        const result = await saveScene(
+          {
+            ...options,
+            source: body?.source || 'browser',
+            expectedRevision: body?.expectedRevision
+          },
+          normalizedAssets.scene
+        )
         broadcast({ type: 'scene-changed', paths: publicPaths(result.paths) })
-        sendJson(res, 200, { scene: result.scene, paths: publicPaths(result.paths) })
+        sendJson(res, 200, { scene: result.scene, paths: publicPaths(result.paths), assets: normalizedAssets.assets })
         return
       }
 
@@ -55,6 +65,11 @@ export function canvasMiddleware(options = {}) {
 
       next()
     } catch (error) {
+      if (error instanceof Error && error.message.startsWith('Scene revision conflict')) {
+        const scene = await loadScene(options)
+        sendJson(res, 409, { error: error.message, scene })
+        return
+      }
       sendJson(res, 500, { error: error instanceof Error ? error.message : String(error) })
     }
   }
