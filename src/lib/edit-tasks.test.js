@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { getCanvasEditTasks } from './edit-tasks.js'
+import { createAiImageHolderElement } from './scene.js'
 
 function image(id, x) {
   return {
@@ -125,5 +126,17 @@ describe('getCanvasEditTasks', () => {
     assert.equal(result.editTasks[0].targetElement.id, 'poster-a')
     assert.deepEqual(result.editTasks[0].annotationElements.map((element) => element.id), ['callout-line', 'callout-text'])
     assert.equal(result.editTasks[0].instructionText, '把这里换成红色')
+  })
+
+  it('ignores AI image holders when assigning edit annotations', () => {
+    const result = getCanvasEditTasks({
+      elements: [
+        image('poster-a', 0),
+        createAiImageHolderElement({ id: 'holder-1', x: 440, y: 0, width: 320, height: 220 })
+      ]
+    })
+
+    assert.equal(result.editTasks.length, 0)
+    assert.equal(result.ambiguousAnnotations.length, 0)
   })
 })

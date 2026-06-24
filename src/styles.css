@@ -240,7 +240,152 @@ button:disabled {
 }
 
 .canvas-frame {
+  position: relative;
   min-height: 0;
+}
+
+.task-widget {
+  position: absolute;
+  z-index: 5;
+  top: 96px;
+  left: 16px;
+  width: min(288px, calc(100% - 32px));
+  pointer-events: none;
+}
+
+.task-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 10px;
+  border-color: #d8e0ed;
+  border-radius: 8px;
+  color: #27344d;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 6px 18px rgba(39, 52, 77, 0.11);
+  font-size: 12px;
+  font-weight: 800;
+  pointer-events: auto;
+}
+
+.task-toggle:hover {
+  color: #172033;
+  background: #ffffff;
+}
+
+.task-toggle.has-warning {
+  border-color: #f3b4ad;
+}
+
+.task-toggle strong {
+  color: #b42318;
+  font-size: 11px;
+}
+
+.task-panel {
+  margin-top: 8px;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid rgba(213, 220, 234, 0.88);
+  border-radius: 8px;
+  color: #172033;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 8px 24px rgba(39, 52, 77, 0.12);
+  pointer-events: none;
+}
+
+.task-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.task-panel-header strong {
+  padding: 3px 7px;
+  border-radius: 999px;
+  color: #1c4ed8;
+  background: #eef5ff;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.task-stats {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.task-stats span {
+  flex: 1;
+  padding: 5px 6px;
+  border-radius: 6px;
+  color: #536074;
+  background: #f4f7fb;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.task-stats .is-warning {
+  color: #b42318;
+  background: #fff1f0;
+}
+
+.task-hint,
+.task-empty,
+.task-more {
+  margin: 8px 0 0;
+  color: #637083;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.task-list {
+  display: grid;
+  gap: 6px;
+  margin: 9px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.task-list li {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 7px;
+  border: 1px solid #edf1f7;
+  border-radius: 7px;
+  background: #ffffff;
+}
+
+.task-list span,
+.task-list strong,
+.task-list small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-list span {
+  color: #172033;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.task-list strong {
+  color: #536074;
+  font-size: 11px;
+}
+
+.task-list small {
+  color: #8a95a6;
+  font-size: 10.5px;
 }
 
 .loading {

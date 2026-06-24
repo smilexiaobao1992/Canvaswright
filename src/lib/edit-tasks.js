@@ -1,4 +1,4 @@
-import { finiteNumber, normalizeScenePayload } from './scene.js'
+import { finiteNumber, isAiImageHolder, normalizeScenePayload } from './scene.js'
 
 const MAX_NEAR_DISTANCE = 180
 
@@ -151,6 +151,7 @@ function assignTextToNearbyAnnotation(textAnnotation, annotations, assignmentsBy
 }
 
 function isAnnotationElement(element) {
+  if (isAiImageHolder(element)) return false
   return ['arrow', 'diamond', 'ellipse', 'freedraw', 'line', 'rectangle', 'text'].includes(element?.type)
 }
 

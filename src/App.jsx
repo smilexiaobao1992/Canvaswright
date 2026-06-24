@@ -2,6 +2,7 @@ import { Excalidraw } from '@excalidraw/excalidraw'
 import '@excalidraw/excalidraw/index.css'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createAiImageHolderElement, getSceneSelection, normalizeScenePayload, rightOfCanvasContentBounds } from './lib/scene.js'
+import { getCanvasTaskOverview } from './lib/task-overview.js'
 
 const SAVE_DELAY_MS = 350
 const STATUS_AUTOSAVE_ON = 'Autosave on'
@@ -11,6 +12,7 @@ export default function App() {
   const [status, setStatus] = useState('Loading canvas...')
   const [currentSelection, setCurrentSelection] = useState([])
   const [lockedTarget, setLockedTarget] = useState(null)
+  const [isTaskPanelOpen, setIsTaskPanelOpen] = useState(false)
   const apiRef = useRef(null)
   const saveTimerRef = useRef(null)
   const lastRemoteSceneAtRef = useRef(null)
@@ -62,6 +64,7 @@ export default function App() {
           lastRemoteSceneAtRef.current = remoteScene.updatedAt
           lastRevisionRef.current = remoteScene.revision
           lockedTargetRef.current = remoteLockedTarget
+          setScene(remoteScene)
           apiRef.current?.updateScene({
             elements: remoteScene.elements,
             appState: remoteScene.appState
@@ -97,6 +100,7 @@ export default function App() {
       })
       const nextSelection = getSceneSelection(nextScene)
       const activeLockedTarget = resolveTargetFromScene(nextScene, lockedTargetRef.current?.id)
+      setScene(nextScene)
       setCurrentSelection(nextSelection.selectedElements)
       if (lockedTargetRef.current && !activeLockedTarget) {
         lockedTargetRef.current = null
@@ -120,6 +124,7 @@ export default function App() {
           lastRemoteSceneAtRef.current = remoteScene.updatedAt
           lastRevisionRef.current = remoteScene.revision
           lockedTargetRef.current = remoteLockedTarget
+          setScene(remoteScene)
           apiRef.current?.updateScene({
             elements: remoteScene.elements,
             appState: remoteScene.appState
@@ -147,6 +152,7 @@ export default function App() {
         lastRemoteSceneAtRef.current = savedScene.updatedAt
         lastRevisionRef.current = savedScene.revision
         lockedTargetRef.current = savedLockedTarget
+        setScene(savedScene)
         apiRef.current?.updateScene({
           elements: savedScene.elements,
           appState: savedScene.appState
@@ -223,6 +229,7 @@ export default function App() {
   const activeTarget = lockedTarget ?? currentSelection[0] ?? null
   const canLockCurrentTarget = currentSelection.some((element) => element.type === 'image' || element.isAiImageHolder)
   const targetStateLabel = lockedTarget ? '已锁定' : activeTarget ? '当前选中' : '未选择'
+  const taskOverview = getCanvasTaskOverview({ scene, currentSelection, lockedTarget })
 
   return (
     <main className="app-shell">
@@ -269,6 +276,11 @@ export default function App() {
         <span className="status">{status}</span>
       </header>
       <section className="canvas-frame" aria-label="Canvaswright Excalidraw canvas">
+        <TaskOverviewPanel
+          overview={taskOverview}
+          isOpen={isTaskPanelOpen}
+          onToggle={() => setIsTaskPanelOpen((isOpen) => !isOpen)}
+        />
         <Excalidraw
           excalidrawAPI={(api) => {
             apiRef.current = api
@@ -280,6 +292,55 @@ export default function App() {
         />
       </section>
     </main>
+  )
+}
+
+function TaskOverviewPanel({ overview, isOpen, onToggle }) {
+  const shownTasks = overview.tasks.slice(0, 3)
+  return (
+    <div className={`task-widget ${isOpen ? 'is-open' : ''}`}>
+      <button
+        type="button"
+        className={`task-toggle ${overview.ambiguousCount > 0 ? 'has-warning' : ''}`}
+        onClick={onToggle}
+        aria-expanded={isOpen}
+        aria-controls="canvaswright-task-panel"
+        title={isOpen ? '隐藏任务识别面板' : '显示任务识别面板'}
+      >
+        <span>任务 {overview.taskCount}</span>
+        {overview.ambiguousCount > 0 ? <strong>疑问 {overview.ambiguousCount}</strong> : null}
+      </button>
+      {isOpen ? (
+        <aside id="canvaswright-task-panel" className="task-panel" aria-label="Canvaswright task overview">
+          <div className="task-panel-header">
+            <span>任务识别</span>
+            <strong>{overview.modeLabel}</strong>
+          </div>
+          <div className="task-stats" aria-label="任务统计">
+            <span>图片 {overview.imageCount}</span>
+            <span>任务 {overview.taskCount}</span>
+            <span className={overview.ambiguousCount > 0 ? 'is-warning' : ''}>疑问 {overview.ambiguousCount}</span>
+          </div>
+          <p className="task-hint">{overview.warning || overview.hint}</p>
+          {shownTasks.length > 0 ? (
+            <ol className="task-list">
+              {shownTasks.map((task) => (
+                <li key={task.targetId}>
+                  <span>{task.targetLabel}</span>
+                  <strong>{task.annotationCount} 标注</strong>
+                  {task.instructionText ? <small>{task.instructionText}</small> : null}
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="task-empty">{overview.imageCount === 0 ? '先上传图片' : '画圈、箭头或文字后会出现任务'}</p>
+          )}
+          {overview.tasks.length > shownTasks.length ? (
+            <p className="task-more">还有 {overview.tasks.length - shownTasks.length} 个任务</p>
+          ) : null}
+        </aside>
+      ) : null}
+    </div>
   )
 }
 
