@@ -305,10 +305,13 @@ function TaskOverviewPanel({ overview, isOpen, onToggle }) {
         onClick={onToggle}
         aria-expanded={isOpen}
         aria-controls="canvaswright-task-panel"
+        aria-label={`任务识别，${overview.taskCount} 个任务，${overview.ambiguousCount} 个疑问`}
         title={isOpen ? '隐藏任务识别面板' : '显示任务识别面板'}
       >
-        <span>任务 {overview.taskCount}</span>
-        {overview.ambiguousCount > 0 ? <strong>疑问 {overview.ambiguousCount}</strong> : null}
+        <Icon name="tasks" />
+        <span className="task-toggle-count">{overview.taskCount}</span>
+        {overview.ambiguousCount > 0 ? <span className="task-warning-dot" aria-hidden="true" /> : null}
+        {overview.ambiguousCount > 0 ? <span className="sr-only">疑问 {overview.ambiguousCount}</span> : null}
       </button>
       {isOpen ? (
         <aside id="canvaswright-task-panel" className="task-panel" aria-label="Canvaswright task overview">
@@ -368,6 +371,16 @@ function Icon({ name }) {
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <rect x="4" y="5" width="16" height="14" rx="2" />
         <path d="M8 15l3-3 2 2 3-4 2 5" />
+      </svg>
+    )
+  }
+  if (name === 'tasks') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 19V9" />
+        <path d="M12 19V5" />
+        <path d="M19 19v-7" />
+        <path d="M4 19h16" />
       </svg>
     )
   }

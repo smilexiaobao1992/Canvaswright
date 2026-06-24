@@ -247,8 +247,8 @@ button:disabled {
 .task-widget {
   position: absolute;
   z-index: 5;
-  top: 96px;
-  left: 16px;
+  top: 14px;
+  left: 62px;
   width: min(288px, calc(100% - 32px));
   pointer-events: none;
 }
@@ -256,16 +256,17 @@ button:disabled {
 .task-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  position: relative;
+  gap: 0;
+  width: 34px;
   height: 34px;
-  padding: 0 10px;
+  padding: 0;
   border-color: #d8e0ed;
   border-radius: 8px;
   color: #27344d;
   background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 6px 18px rgba(39, 52, 77, 0.11);
-  font-size: 12px;
-  font-weight: 800;
   pointer-events: auto;
 }
 
@@ -278,9 +279,43 @@ button:disabled {
   border-color: #f3b4ad;
 }
 
-.task-toggle strong {
-  color: #b42318;
-  font-size: 11px;
+.task-toggle svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.9;
+}
+
+.task-toggle-count {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: grid;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border: 1px solid #ffffff;
+  border-radius: 999px;
+  color: #ffffff;
+  background: #1c4ed8;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.task-warning-dot {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 8px;
+  height: 8px;
+  border: 1px solid #ffffff;
+  border-radius: 999px;
+  background: #d92d20;
 }
 
 .task-panel {
